@@ -1,0 +1,17 @@
+[package]
+name = "ftp-s3"
+version = "0.1.0"
+authors = ["Bruno Arueira <contato@brunoarueira.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async_ftp = { version = "5.0.0", features = ["secure"] }
+futures = "*"
+futures-util = "*"
+lazy_static = "1.4.0"
+rusoto_core = "0.46.0"
+rusoto_s3 = "0.46.0"
+tokio = { version = "1.4.0", features = ["rt", "rt-multi-thread"] }
+tokio-util = { version = "0.6", features = ["full"] }
