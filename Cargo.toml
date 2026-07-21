@@ -11,7 +11,7 @@ async_ftp = { version = "5.0.0", features = ["secure"] }
 futures = "*"
 futures-util = "*"
 lazy_static = "1.4.0"
-rusoto_core = "0.46.0"
-rusoto_s3 = "0.46.0"
+rusoto_core = "0.48.0"
+rusoto_s3 = "0.48.0"
 tokio = { version = "1.38.2", features = ["rt", "rt-multi-thread"] }
 tokio-util = { version = "0.6", features = ["full"] }
