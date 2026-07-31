@@ -3,7 +3,6 @@ extern crate lazy_static;
 
 mod s3;
 
-use tokio::io::AsyncReadExt;
 use std::error::Error;
 use async_ftp::FtpStream;
 use tokio::runtime::Builder;
