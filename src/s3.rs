@@ -1,37 +1,50 @@
-extern crate rusoto_core;
-extern crate rusoto_s3;
-
-use async_ftp::DataStream;
-use rusoto_core::{Region};
-use rusoto_s3::{S3Client, S3, PutObjectRequest, StreamingBody};
-use futures::stream::{TryStreamExt};
-use std::error::Error;
-use tokio::io::BufReader;
+use aws_config::BehaviorVersion;
+use aws_sdk_s3 as s3;
+use aws_sdk_s3::primitives::ByteStream;
+use aws_sdk_s3::primitives::SdkBody;
+use futures_util::TryStreamExt;
+use hyper::Body;
+use suppaftp::tokio::AsyncDataStream;
 use tokio_util::codec;
 
 const ENDPOINT: &str = "http://localhost:4566";
 const BUCKET_NAME: &str = "sync";
 const REGION: &str = "local";
 
-lazy_static! {
-    static ref S3_CLIENT: S3Client = S3Client::new(Region::Custom {
-        name: REGION.into(),
-        endpoint: ENDPOINT.into()
-    });
-}
+pub async fn save_to_s3<
+    T: std::marker::Send + suppaftp::tokio::TokioTlsStream + std::marker::Sync + 'static,
+>(
+    entry: &str,
+    buffer: AsyncDataStream<T>,
+) -> Result<(), s3::Error> {
+    let config = aws_config::defaults(BehaviorVersion::latest())
+        .region(REGION)
+        .endpoint_url(ENDPOINT)
+        .load()
+        .await;
+    let client = s3::Client::new(&config);
 
-pub async fn save_to_s3(entry: &str, buffer: BufReader<DataStream>) -> Result<(), Box<dyn Error>> {
-    let byte_stream =
-        codec::FramedRead::new(buffer, codec::BytesCodec::new())
-        .map_ok(|r| r.freeze());
+    let framed_stream = codec::FramedRead::new(buffer, codec::BytesCodec::new())
+        .map_ok(|bytes_mut| bytes_mut.freeze());
 
-    S3_CLIENT.put_object(PutObjectRequest {
-        bucket: BUCKET_NAME.into(),
-        key: String::from(entry),
-        body: Some(StreamingBody::new(byte_stream)),
-        acl: Some("public-read".to_string()),
-        ..Default::default()
-    }).await.expect(format!("could not upload {}", &entry).as_str());
+    let body_impl = Body::wrap_stream(framed_stream);
+
+    let sdk_body = SdkBody::from_body_0_4(body_impl);
+
+    let byte_stream = ByteStream::new(sdk_body);
+
+    let response = client
+        .put_object()
+        .bucket(BUCKET_NAME)
+        .key(entry)
+        .body(byte_stream)
+        .send()
+        .await?;
+
+    println!(
+        "Upload with success, Version ID: {:?}",
+        response.version_id()
+    );
 
     Ok(())
 }
